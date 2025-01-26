@@ -41,18 +41,20 @@
 
     .puzzle-container {
       display: grid;
-      grid-template-columns: repeat(3, 100px);
-      grid-template-rows: repeat(3, 100px);
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
       gap: 5px;
-      position: relative;
+      width: 300px;
+      height: 300px;
     }
 
     .puzzle-piece {
-      width: 100px;
-      height: 100px;
+      width: 100%;
+      height: 100%;
       background-size: 300px 300px;
       border: 1px solid #ddd;
       cursor: pointer;
+      transition: transform 0.2s, border-color 0.2s;
     }
 
     .puzzle-piece.correct {
@@ -69,7 +71,6 @@
       font-size: 16px;
       cursor: pointer;
       margin: 5px;
-      border-radius: 5px;
     }
 
     /* Popup styles */
@@ -109,13 +110,10 @@
 
     @media (max-width: 600px) {
       .puzzle-container {
-        grid-template-columns: repeat(3, 70px);
-        grid-template-rows: repeat(3, 70px);
-      }
-
-      .puzzle-piece {
-        width: 70px;
-        height: 70px;
+        width: 240px;
+        height: 240px;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(3, 1fr);
       }
 
       .image-thumbnail {
@@ -126,22 +124,19 @@
   </style>
 </head>
 <body>
-    <div>
-        <h4>MK Puzzles</h4>
-    </div>
   <div class="image-selector" id="image-selector">
     <img src="https://i.pinimg.com/474x/1a/a9/2e/1aa92ef14a5ee1ffcc5474d53bfb1cd2.jpg" alt="Image 1" class="image-thumbnail" data-image="https://i.pinimg.com/474x/1a/a9/2e/1aa92ef14a5ee1ffcc5474d53bfb1cd2.jpg">
     <img src="https://upload.wikimedia.org/wikipedia/en/b/b6/Minecraft_2024_cover_art.png" alt="Image 2" class="image-thumbnail" data-image="https://upload.wikimedia.org/wikipedia/en/b/b6/Minecraft_2024_cover_art.png">
     <img src="https://snobmonkey.com/wp-content/uploads/2019/04/transparent-instagram-logo-download-logo-instagram-free-png-transparent-image-and-clipart-printable-300x300.png" alt="Image 3" class="image-thumbnail" data-image="https://snobmonkey.com/wp-content/uploads/2019/04/transparent-instagram-logo-download-logo-instagram-free-png-transparent-image-and-clipart-printable-300x300.png">
     <img src="https://coreldrawdesign.com/resources/thumbnails/thumbnail-1636366955.jpg" alt="Image 4" class="image-thumbnail" data-image="https://coreldrawdesign.com/resources/thumbnails/thumbnail-1636366955.jpg">
     <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRlJJgr8bfIvuHo_9GGojk_bfohrG5FXwc6Cw&s" alt="Image 5" class="image-thumbnail" data-image="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRlJJgr8bfIvuHo_9GGojk_bfohrG5FXwc6Cw&s">
-</div>
+  </div>
 
   <div>
     <div class="puzzle-container" id="puzzle-container"></div>
     <div class="controls">
       <button id="shuffle-button">Shuffle</button>
-      <button id="done-button">Done</button>
+      <!-- <button id="done-button">Done</button> -->
     </div>
   </div>
 
@@ -161,8 +156,9 @@
     const popupMessage = document.getElementById('popup-message');
     const popupClose = document.getElementById('popup-close');
 
-    const pieces = Array.from({ length: 9 }, (_, i) => i);
+    let pieces = Array.from({ length: 9 }, (_, i) => i);
     let selectedImage = '';
+    let firstSelected = null;
 
     imageSelector.addEventListener('click', (event) => {
       if (event.target.classList.contains('image-thumbnail')) {
@@ -190,60 +186,52 @@
         div.style.backgroundPosition = `${(piece % 3) * -100}px ${(Math.floor(piece / 3)) * -100}px`;
         div.dataset.index = piece;
 
-        div.addEventListener('dragstart', dragStart);
-        div.addEventListener('dragover', dragOver);
-        div.addEventListener('drop', drop);
+        div.addEventListener('click', handlePieceClick);
 
         container.appendChild(div);
       });
     }
 
-    let draggedPiece = null;
+    function handlePieceClick(event) {
+      const selectedPiece = event.target;
 
-    function dragStart(event) {
-      draggedPiece = event.target;
-    }
+      if (!firstSelected) {
+        firstSelected = selectedPiece;
+        selectedPiece.style.borderColor = 'red';
+        return;
+      }
 
-    function dragOver(event) {
-      event.preventDefault();
-    }
+      // Swap pieces
+      const tempIndex = firstSelected.dataset.index;
+      firstSelected.dataset.index = selectedPiece.dataset.index;
+      selectedPiece.dataset.index = tempIndex;
 
-    function drop(event) {
-      event.preventDefault();
-      const targetPiece = event.target;
+      const tempPosition = firstSelected.style.backgroundPosition;
+      firstSelected.style.backgroundPosition = selectedPiece.style.backgroundPosition;
+      selectedPiece.style.backgroundPosition = tempPosition;
 
-      const draggedIndex = draggedPiece.dataset.index;
-      const targetIndex = targetPiece.dataset.index;
-
-      [draggedPiece.style.backgroundPosition, targetPiece.style.backgroundPosition] =
-        [targetPiece.style.backgroundPosition, draggedPiece.style.backgroundPosition];
-
-      [draggedPiece.dataset.index, targetPiece.dataset.index] =
-        [targetIndex, draggedIndex];
+      firstSelected.style.borderColor = '';
+      firstSelected = null;
 
       checkCorrectness();
     }
 
-    function checkCorrectness() {
-      const pieces = document.querySelectorAll('.puzzle-piece');
-      pieces.forEach(piece => {
-        const index = piece.dataset.index;
-        if (piece.style.backgroundPosition === `${(index % 3) * -100}px ${(Math.floor(index / 3)) * -100}px`) {
-          piece.classList.add('correct');
-        } else {
-          piece.classList.remove('correct');
-        }
-      });
-    }
+//     function checkCorrectness() {
+//   const pieces = document.querySelectorAll('.puzzle-piece');
+//   return Array.from(pieces).every(piece => {
+//     const index = piece.dataset.index;
+//     return piece.style.backgroundPosition === `${(index % 3) * -100}px ${(Math.floor(index / 3)) * -100}px`;
+//   });
+// }
 
-    doneButton.addEventListener('click', () => {
-      const pieces = document.querySelectorAll('.puzzle-piece');
-      const isCorrect = Array.from(pieces).every(piece => piece.classList.contains('correct'));
-      popupMessage.textContent = isCorrect ? 'Congratulations! You solved it!' : 'Try again!';
-      popup.style.display = 'block';
-      popupOverlay.style.display = 'block';
-    });
-
+// doneButton.addEventListener('click', () => {
+//   const isSolved = checkCorrectness();
+//   popupMessage.textContent = isSolved
+//     ? 'Congratulations! You solved it!'
+//     : 'The puzzle is incomplete. Try again!';
+//   popup.style.display = 'block';
+//   popupOverlay.style.display = 'block';
+// });
     shuffleButton.addEventListener('click', () => {
       shuffle(pieces);
       createPuzzle();
