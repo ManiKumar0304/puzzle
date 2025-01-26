@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jigsaw Puzzle Game</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background-color: lightblue;
+    }
+
+    .image-selector {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .image-thumbnail {
+      width: 100px;
+      height: 100px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      object-fit: cover;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .image-thumbnail:hover {
+      transform: scale(1.1);
+    }
+
+    .image-thumbnail.selected {
+      border-color: blue;
+    }
+
+    .puzzle-container {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-template-rows: repeat(3, 100px);
+      gap: 5px;
+      position: relative;
+    }
+
+    .puzzle-piece {
+      width: 100px;
+      height: 100px;
+      background-size: 300px 300px;
+      border: 1px solid #ddd;
+      cursor: pointer;
+    }
+
+    .puzzle-piece.correct {
+      border: 2px solid green;
+    }
+
+    .controls {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .controls button {
+      padding: 10px 15px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 5px;
+      border-radius: 5px;
+    }
+
+    /* Popup styles */
+    .popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      text-align: center;
+      display: none;
+      z-index: 1000;
+    }
+
+    .popup button {
+      padding: 10px 15px;
+      background: dodgerblue;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .popup-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      z-index: 999;
+    }
+
+    @media (max-width: 600px) {
+      .puzzle-container {
+        grid-template-columns: repeat(3, 70px);
+        grid-template-rows: repeat(3, 70px);
+      }
+
+      .puzzle-piece {
+        width: 70px;
+        height: 70px;
+      }
+
+      .image-thumbnail {
+        width: 70px;
+        height: 70px;
+      }
+    }
+  </style>
+</head>
+<body>
+    <div>
+        <h4>MK Puzzles</h4>
+    </div>
+  <div class="image-selector" id="image-selector">
+    <img src="https://i.pinimg.com/474x/1a/a9/2e/1aa92ef14a5ee1ffcc5474d53bfb1cd2.jpg" alt="Image 1" class="image-thumbnail" data-image="https://i.pinimg.com/474x/1a/a9/2e/1aa92ef14a5ee1ffcc5474d53bfb1cd2.jpg">
+    <img src="https://upload.wikimedia.org/wikipedia/en/b/b6/Minecraft_2024_cover_art.png" alt="Image 2" class="image-thumbnail" data-image="https://upload.wikimedia.org/wikipedia/en/b/b6/Minecraft_2024_cover_art.png">
+    <img src="https://snobmonkey.com/wp-content/uploads/2019/04/transparent-instagram-logo-download-logo-instagram-free-png-transparent-image-and-clipart-printable-300x300.png" alt="Image 3" class="image-thumbnail" data-image="https://snobmonkey.com/wp-content/uploads/2019/04/transparent-instagram-logo-download-logo-instagram-free-png-transparent-image-and-clipart-printable-300x300.png">
+    <img src="https://coreldrawdesign.com/resources/thumbnails/thumbnail-1636366955.jpg" alt="Image 4" class="image-thumbnail" data-image="https://coreldrawdesign.com/resources/thumbnails/thumbnail-1636366955.jpg">
+    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRlJJgr8bfIvuHo_9GGojk_bfohrG5FXwc6Cw&s" alt="Image 5" class="image-thumbnail" data-image="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRlJJgr8bfIvuHo_9GGojk_bfohrG5FXwc6Cw&s">
+</div>
+
+  <div>
+    <div class="puzzle-container" id="puzzle-container"></div>
+    <div class="controls">
+      <button id="shuffle-button">Shuffle</button>
+      <button id="done-button">Done</button>
+    </div>
+  </div>
+
+  <div class="popup-overlay" id="popup-overlay"></div>
+  <div class="popup" id="popup">
+    <p id="popup-message">Message here</p>
+    <button id="popup-close">Close</button>
+  </div>
+
+  <script>
+    const container = document.getElementById('puzzle-container');
+    const shuffleButton = document.getElementById('shuffle-button');
+    const doneButton = document.getElementById('done-button');
+    const imageSelector = document.getElementById('image-selector');
+    const popup = document.getElementById('popup');
+    const popupOverlay = document.getElementById('popup-overlay');
+    const popupMessage = document.getElementById('popup-message');
+    const popupClose = document.getElementById('popup-close');
+
+    const pieces = Array.from({ length: 9 }, (_, i) => i);
+    let selectedImage = '';
+
+    imageSelector.addEventListener('click', (event) => {
+      if (event.target.classList.contains('image-thumbnail')) {
+        document.querySelectorAll('.image-thumbnail').forEach(img => img.classList.remove('selected'));
+        event.target.classList.add('selected');
+        selectedImage = event.target.dataset.image;
+        createPuzzle();
+      }
+    });
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    function createPuzzle() {
+      if (!selectedImage) return;
+      container.innerHTML = '';
+      pieces.forEach((piece, index) => {
+        const div = document.createElement('div');
+        div.className = 'puzzle-piece';
+        div.style.backgroundImage = `url('${selectedImage}')`;
+        div.style.backgroundPosition = `${(piece % 3) * -100}px ${(Math.floor(piece / 3)) * -100}px`;
+        div.dataset.index = piece;
+
+        div.addEventListener('dragstart', dragStart);
+        div.addEventListener('dragover', dragOver);
+        div.addEventListener('drop', drop);
+
+        container.appendChild(div);
+      });
+    }
+
+    let draggedPiece = null;
+
+    function dragStart(event) {
+      draggedPiece = event.target;
+    }
+
+    function dragOver(event) {
+      event.preventDefault();
+    }
+
+    function drop(event) {
+      event.preventDefault();
+      const targetPiece = event.target;
+
+      const draggedIndex = draggedPiece.dataset.index;
+      const targetIndex = targetPiece.dataset.index;
+
+      [draggedPiece.style.backgroundPosition, targetPiece.style.backgroundPosition] =
+        [targetPiece.style.backgroundPosition, draggedPiece.style.backgroundPosition];
+
+      [draggedPiece.dataset.index, targetPiece.dataset.index] =
+        [targetIndex, draggedIndex];
+
+      checkCorrectness();
+    }
+
+    function checkCorrectness() {
+      const pieces = document.querySelectorAll('.puzzle-piece');
+      pieces.forEach(piece => {
+        const index = piece.dataset.index;
+        if (piece.style.backgroundPosition === `${(index % 3) * -100}px ${(Math.floor(index / 3)) * -100}px`) {
+          piece.classList.add('correct');
+        } else {
+          piece.classList.remove('correct');
+        }
+      });
+    }
+
+    doneButton.addEventListener('click', () => {
+      const pieces = document.querySelectorAll('.puzzle-piece');
+      const isCorrect = Array.from(pieces).every(piece => piece.classList.contains('correct'));
+      popupMessage.textContent = isCorrect ? 'Congratulations! You solved it!' : 'Try again!';
+      popup.style.display = 'block';
+      popupOverlay.style.display = 'block';
+    });
+
+    shuffleButton.addEventListener('click', () => {
+      shuffle(pieces);
+      createPuzzle();
+    });
+
+    popupClose.addEventListener('click', () => {
+      popup.style.display = 'none';
+      popupOverlay.style.display = 'none';
+    });
+  </script>
+</body>
+</html>
